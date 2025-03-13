@@ -1,0 +1,37 @@
+/* Control Panel Styles */
+
+.control-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.control-panel button {
+    padding: 8px 12px;
+    font-size: 14px;
+    color: #ffffff;
+    background-color: #007bff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.control-panel button:hover {
+    background-color: #0056b3;
+}
+
+.control-panel .status {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.control-panel .timer {
+    font-weight: bold;
+    color: #28a745;
+}

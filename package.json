@@ -1,0 +1,19 @@
+{
+  "name": "brainstorm.ai",
+  "version": "1.0.0",
+  "description": "AI-powered brainstorming tool",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test/**/*.test.js",
+    "test:integration": "mocha test/integration/**/*.test.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0"
+  },
+  "author": "",
+  "license": "ISC"
+}

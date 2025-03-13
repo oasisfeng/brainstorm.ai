@@ -1,0 +1,31 @@
+{
+  "name": "brainstorm-ai",
+  "version": "1.0.0",
+  "description": "A web-based brainstorming application utilizing AI agents for discussions.",
+  "type": "module",
+  "main": "src/js/app.js",
+  "scripts": {
+    "start": "live-server --port=8080 --open --no-browser",
+    "test": "NODE_NO_WARNINGS=1 node --experimental-vm-modules node_modules/jest/bin/jest.js"
+  },
+  "keywords": [
+    "brainstorming",
+    "AI",
+    "discussion",
+    "web-app"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "live-server": "^1.2.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/preset-env": "^7.24.0",
+    "@jest/globals": "^29.7.0",
+    "babel-jest": "^29.7.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  }
+}

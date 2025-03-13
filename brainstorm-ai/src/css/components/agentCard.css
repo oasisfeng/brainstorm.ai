@@ -1,0 +1,50 @@
+/* agentCard.css */
+
+.agent-card {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px;
+    background-color: #f9f9f9;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.agent-card:hover {
+    transform: scale(1.05);
+}
+
+.agent-card h3 {
+    margin: 0 0 8px;
+    font-size: 1.5em;
+    color: #333;
+}
+
+.agent-card p {
+    margin: 4px 0;
+    color: #666;
+}
+
+.agent-card .role {
+    font-weight: bold;
+    color: #007bff;
+}
+
+.agent-card .performance {
+    font-size: 0.9em;
+    color: #28a745;
+}
+
+.agent-card .remove-agent {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.agent-card .remove-agent:hover {
+    background-color: #c82333;
+}

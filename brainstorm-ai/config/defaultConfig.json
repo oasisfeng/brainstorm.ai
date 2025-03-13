@@ -1,0 +1,21 @@
+{
+  "llmProviders": [
+    {
+      "name": "OpenAI",
+      "apiUrl": "https://api.openai.com/v1",
+      "apiKey": "",
+      "models": ["gpt-4", "gpt-3.5-turbo"],
+      "defaultParams": {
+        "temperature": 0.7,
+        "max_tokens": 1000
+      }
+    }
+  ],
+  "defaultRoundDuration": 30,
+  "defaultAgentCount": 5,
+  "filePaths": {
+    "config": "./config.json",
+    "discussions": "./discussions/",
+    "userInput": "./user_input.txt"
+  }
+}

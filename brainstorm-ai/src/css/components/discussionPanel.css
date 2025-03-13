@@ -1,0 +1,79 @@
+.topic-input {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.topic-input input {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.discussion-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    background: white;
+}
+
+.discussion-panel {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 20px 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.message {
+    padding: 10px;
+    border-radius: 5px;
+    margin: 5px 0;
+}
+
+.message.agent-message {
+    background-color: #e1f5fe;
+    border-left: 4px solid #2196f3;
+}
+
+.message.user-message {
+    background-color: #ffe0b2;
+    border-left: 4px solid #ff9800;
+}
+
+.discussion-controls {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.round-summary {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: #f0f8ff;
+    border: 1px solid #b3e0ff;
+    border-radius: 4px;
+}
+
+.agent-evaluation {
+    margin: 10px 0;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-left: 4px solid #4caf50;
+}
+
+.empty-state {
+    text-align: center;
+    color: #666;
+    padding: 40px;
+    font-style: italic;
+}

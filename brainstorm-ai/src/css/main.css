@@ -1,0 +1,105 @@
+/* main.css */
+
+/* Main styles for the application */
+
+/* Body styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+}
+
+/* Header styles */
+header {
+    background: #35424a;
+    color: #ffffff;
+    padding: 10px 0;
+    text-align: center;
+}
+
+/* Container styles */
+.container {
+    width: 80%;
+    margin: auto;
+    overflow: hidden;
+}
+
+/* Button styles */
+button {
+    background: #35424a;
+    color: #ffffff;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #e8491d;
+}
+
+/* General text styles */
+h1, h2, h3 {
+    color: #35424a;
+}
+
+p {
+    line-height: 1.6;
+}
+
+/* Discussion panel styles */
+.discussion-panel {
+    background: #ffffff;
+    border-radius: 5px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Control panel styles */
+.control-panel {
+    margin-top: 20px;
+}
+
+/* Agent card styles */
+.agent-card {
+    background: #e9ecef;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    padding: 15px;
+    margin: 10px 0;
+}
+
+/* Error Notification styles */
+.error-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #fff1f0;
+    border: 1px solid #ffa39e;
+    padding: 12px 24px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 1000;
+    max-width: 80vw;
+}
+
+.error-content {
+    flex: 1;
+    white-space: pre-wrap;
+}
+
+.error-close {
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px 8px;
+}
+
+.error-close:hover {
+    color: #333;
+}
