@@ -1,542 +1,389 @@
 # 详细设计文档
 
-## 系统架构
+## 1. 系统架构
 
-### 整体架构
+### 1.1 整体架构
+系统采用前端单页应用架构，所有功能在浏览器中实现，无需服务器支持。架构分为以下几个主要模块：
+
+- **核心控制器**: 协调整个系统的运行，管理讨论流程和状态
+- **UI 界面**: 提供用户交互界面，显示讨论内容和控制选项
+- **文件管理器**: 负责本地文件的读写操作
+- **LLM 服务适配器**: 与云端 LLM API 交互
+- **Agent 管理器**: 负责创建、配置和管理各个 AI agent
+- **讨论管理器**: 控制讨论流程，包括轮次切换和发言调度
+
+### 1.2 模块依赖关系
 ```
-                  +----------------+
-                  |                |
-                  |   Web 前端     |
-                  |                |
-                  +-------+--------+
-                          |
-                          v
-+------------+    +-------+--------+    +-----------------+
-|            |    |                |    |                 |
-| 语言模型API |<-->|  后端核心逻辑  |<-->|   状态管理系统   |
-|            |    |                |    |                 |
-+------------+    +-------+--------+    +-----------------+
-                          |
-                          v
-                  +-------+--------+
-                  |                |
-                  |   日志系统     |
-                  |                |
-                  +----------------+
+核心控制器
+ ├── UI 界面
+ ├── 文件管理器
+ ├── LLM 服务适配器
+ ├── Agent 管理器
+ └── 讨论管理器
 ```
 
-### 技术栈选择
-- **前端**：React + TypeScript + Tailwind CSS
-- **状态管理**：React Context API 或 Redux
-- **API通信**：Axios
-- **测试**：Jest + React Testing Library
+## 2. 数据结构
 
-## 核心组件设计
-
-### 1. Agent 系统
-
-```typescript
-interface AgentConfig {
-  id: string;
-  role: string;
-  systemPrompt: string;
-  modelConfig: {
-    provider: string;     // 如 "openai"
-    model: string;        // 如 "gpt-4"
-    temperature: number;
-    apiUrlPrefix?: string; // 可选，自定义API端点
-    apiParams?: Record<string, any>; // 其他API参数
-  };
-  expertise: string[];    // 专长领域
-}
-
-class Agent {
-  private config: AgentConfig;
-  private messageHistory: Message[];
-  
-  constructor(config: AgentConfig) {
-    this.config = config;
-    this.messageHistory = [];
-  }
-
-  async generateResponse(discussionContext: DiscussionContext): Promise<string> {
-    // 构建完整的prompt上下文
-    const prompt = this.buildPrompt(discussionContext);
-    
-    // 调用LLM API
-    const response = await this.callLLMApi(prompt);
-    
-    // 保存到历史记录
-    this.messageHistory.push({
-      role: "assistant",
-      content: response,
-      timestamp: new Date()
-    });
-    
-    return response;
-  }
-
-  private buildPrompt(discussionContext: DiscussionContext): string {
-    // 根据角色、历史记录和讨论上下文构建prompt
-  }
-
-  private async callLLMApi(prompt: string): Promise<string> {
-    // 调用配置的语言模型API
-  }
+### 2.1 系统状态
+```
+SystemState {
+    currentRound: Number,      // 当前讨论轮次
+    topic: String,             // 讨论主题
+    status: Enum[SETUP, DISCUSSING, PAUSED, SUMMARIZING, FINISHED],  // 系统状态
+    agents: Array<Agent>,      // 当前参与讨论的所有 agent
+    roundDuration: Number,     // 当前轮次的持续时间(分钟)
+    history: Array<Discussion> // 历史讨论记录
 }
 ```
 
-### 2. 讨论管理器
+### 2.2 Agent 结构
+```
+Agent {
+    id: String,               // 唯一标识
+    role: String,             // 角色名称
+    specialty: String,        // 专业领域
+    systemPrompt: String,     // 系统提示词
+    modelConfig: Object,      // LLM 参数配置
+    messages: Array<Message>, // 该 agent 的发言记录
+    performance: Array<{      // 每轮表现评分
+        round: Number,
+        score: Number,
+        feedback: String
+    }>
+}
+```
 
-```typescript
-interface DiscussionConfig {
-  topic: string;
-  initialInfo: string;
-  roundDuration: number; // 单位：分钟
-  initialAgentCount: number;
+### 2.3 讨论内容结构
+```
+Discussion {
+    roundId: Number,
+    startTime: DateTime,
+    endTime: DateTime,
+    messages: Array<Message>,
+    summary: String,
+    agentEvaluations: Object  // 键为 agentId，值为评估对象
 }
 
-interface DiscussionContext {
-  topic: string;
-  additionalInfo: string[];
-  currentRound: number;
-  messages: Message[];
-  activeAgents: Agent[];
-  removedAgents: Agent[];
+Message {
+    id: String,
+    speakerId: String,        // agent的id或"client"或"organizer"
+    timestamp: DateTime,
+    content: String,
+    type: Enum[NORMAL, QUESTION, SUMMARY, EVALUATION]
 }
+```
 
-class DiscussionManager {
-  private config: DiscussionConfig;
-  private context: DiscussionContext;
-  private organizerLLM: OrganizerLLM;
-  
-  constructor(config: DiscussionConfig) {
-    this.config = config;
-    this.context = this.initializeContext();
-    this.organizerLLM = new OrganizerLLM(config);
-  }
-  
-  async startNewRound(): Promise<void> {
-    // 1. 评估并淘汰表现不佳的Agent
-    if (this.context.currentRound > 1) {
-      await this.evaluateAgentsPerformance();
+### 2.4 配置结构
+```
+Config {
+    llmProviders: Array<{
+        name: String,
+        apiUrl: String,
+        apiKey: String,
+        models: Array<String>,
+        defaultParams: Object
+    }>,
+    defaultRoundDuration: Number,
+    defaultAgentCount: Number,
+    filePaths: {
+        config: String,
+        discussions: String,
+        userInput: String
     }
-    
-    // 2. 根据主题确定是否需要新Agent
-    await this.adjustAgentComposition();
-    
-    // 3. 开始新一轮讨论
-    await this.runDiscussionRound();
-  }
-  
-  async runDiscussionRound(): Promise<void> {
-    // 执行讨论轮次，让各个agent轮流发言
-  }
-  
-  async pauseDiscussion(): Promise<void> {
-    // 暂停讨论，等待当前agent完成发言
-  }
-  
-  async addAgent(description: string): Promise<Agent> {
-    // 根据客户描述创建新的agent
-    const agentConfig = await this.organizerLLM.generateAgentConfig(description, this.context);
-    const newAgent = new Agent(agentConfig);
-    this.context.activeAgents.push(newAgent);
-    return newAgent;
-  }
-  
-  async removeAgent(agentId: string): Promise<void> {
-    // 从讨论中移除agent
-  }
-  
-  async resumeDiscussion(): Promise<void> {
-    // 恢复暂停的讨论
-  }
-  
-  async summarizeRound(): Promise<string> {
-    // 调用组织者LLM总结本轮讨论
-    return this.organizerLLM.summarizeRound(this.context);
-  }
-  
-  private async evaluateAgentsPerformance(): Promise<AgentEvaluation[]> {
-    // 评估每个agent的表现
-    return this.organizerLLM.evaluateAgents(this.context);
-  }
 }
 ```
 
-### 3. 组织者LLM
+## 3. 核心模块设计
 
-```typescript
-class OrganizerLLM {
-  private modelConfig: any;
-  
-  constructor(config: any) {
-    this.modelConfig = {
-      provider: "openai",
-      model: "gpt-4",
-      temperature: 0.7,
-      // 其他配置项
-    };
-  }
-  
-  async summarizeRound(context: DiscussionContext): Promise<string> {
-    const prompt = this.buildSummaryPrompt(context);
-    return this.callLLM(prompt);
-  }
-  
-  async evaluateAgents(context: DiscussionContext): Promise<AgentEvaluation[]> {
-    const evaluations: AgentEvaluation[] = [];
-    
-    for (const agent of context.activeAgents) {
-      const prompt = this.buildEvaluationPrompt(agent, context);
-      const evaluationResult = await this.callLLM(prompt);
-      
-      // 解析评估结果
-      const parsedEvaluation = this.parseEvaluation(evaluationResult);
-      evaluations.push({
-        agentId: agent.getId(),
-        score: parsedEvaluation.score,
-        feedback: parsedEvaluation.feedback
-      });
+### 3.1 核心控制器 (CoreController)
+
+#### 职责
+- 初始化系统
+- 管理系统状态
+- 协调各模块间的交互
+- 处理用户交互事件
+
+#### 主要方法
+- `initialize()`: 初始化系统，加载配置
+- `startNewDiscussion(topic, duration)`: 开始新的讨论
+- `continueDiscussion(filePath)`: 从已存在的讨论文件继续
+- `pauseDiscussion()`: 暂停当前讨论
+- `resumeDiscussion()`: 恢复暂停的讨论
+- `finishRound()`: 结束当前轮次
+- `handleUserInput(input)`: 处理用户输入
+
+### 3.2 UI 界面 (UIManager)
+
+#### 职责
+- 渲染讨论界面
+- 展示 agent 发言
+- 提供用户交互控件
+- 展示系统状态和提示
+
+#### 主要方法
+- `render()`: 渲染整个 UI
+- `updateDiscussionView(messages)`: 更新讨论内容显示
+- `showAgentInfo(agent)`: 显示 agent 信息
+- `showControlPanel()`: 显示用户控制面板
+- `renderUserInputForm()`: 渲染用户输入表单
+- `showNotification(message)`: 显示通知消息
+
+### 3.3 文件管理器 (FileManager)
+
+#### 职责
+- 处理本地文件读写
+- 生成讨论记录 Markdown 文件
+- 监控用户输入文件变化
+- 保存和加载系统配置
+
+#### 主要方法
+- `requestFileSystemAccess()`: 请求文件系统访问权限
+- `saveDiscussionToFile(discussion)`: 将讨论保存为 Markdown
+- `loadDiscussionFromFile(filePath)`: 从文件加载讨论
+- `watchUserInputFile()`: 监控用户输入文件
+- `readUserInputFile()`: 读取用户输入文件内容
+- `clearUserInputFile()`: 清空用户输入文件
+- `saveConfig(config)`: 保存系统配置
+- `loadConfig()`: 加载系统配置
+
+### 3.4 LLM 服务适配器 (LLMServiceAdapter)
+
+#### 职责
+- 与 LLM API 交互
+- 处理请求队列和重试机制
+- 适配不同的 LLM 提供商
+- 管理 API 密钥和参数
+
+#### 主要方法
+- `initialize(config)`: 初始化 LLM 服务配置
+- `sendPrompt(prompt, modelConfig)`: 向 LLM 发送提示并获取回应
+- `createChatCompletion(messages, modelConfig)`: 创建聊天完成请求
+- `handleApiError(error)`: 处理 API 错误
+- `getAvailableModels()`: 获取可用模型列表
+
+### 3.5 Agent 管理器 (AgentManager)
+
+#### 职责
+- 创建和配置 agent
+- 管理 agent 生命周期
+- 评估 agent 表现
+- 选择和淘汰 agent
+
+#### 主要方法
+- `createAgent(role, specialty)`: 创建新 agent
+- `generateSystemPrompt(role, specialty)`: 生成 agent 系统提示词
+- `evaluateAgentPerformance(agentId, discussion)`: 评估 agent 表现
+- `selectAgentsForNextRound(topic)`: 为下一轮选择 agent
+- `removeAgent(agentId)`: 移除 agent
+- `getAgentById(id)`: 根据 ID 获取 agent
+
+### 3.6 讨论管理器 (DiscussionManager)
+
+#### 职责
+- 控制讨论流程
+- 协调 agent 发言顺序
+- 生成讨论总结
+- 管理讨论轮次
+
+#### 主要方法
+- `startRound(topic, agents, duration)`: 开始新一轮讨论
+- `coordinateSpeaking()`: 协调 agent 发言
+- `generateSpeech(agent, context)`: 生成 agent 发言
+- `generateRoundSummary(discussion)`: 生成轮次总结
+- `handleClientIntervention(action)`: 处理客户介入
+- `finishRound()`: 结束当前轮次
+
+## 4. 流程设计
+
+### 4.1 讨论初始化流程
+1. 用户提供讨论主题和初始设置
+2. 系统根据主题生成适合的 agent 角色
+3. 为每个角色创建和配置 agent
+4. 确定首轮讨论时长
+5. 开始第一轮讨论
+
+### 4.2 讨论轮次流程
+1. 组织者发表本轮讨论开场白（首轮）或上轮总结（非首轮）
+2. 按顺序安排每个 agent 发言
+3. 检测用户是否请求暂停
+   - 如果暂停，处理用户输入（添加/移除 agent，提供信息等）
+   - 恢复讨论时，从当前位置继续
+4. 当所有 agent 发言完毕或时间结束，结束当前轮次
+5. 生成本轮讨论总结
+6. 评估各 agent 表现
+
+### 4.3 用户交互流程
+1. 用户可通过 UI 界面或特定文件提供输入
+2. 系统持续监控两个输入通道
+3. 收到用户输入后，暂停当前流程
+4. 解析用户指令（添加/移除 agent，提供信息，调整参数等）
+5. 执行相应操作
+6. 恢复系统流程
+
+## 5. 文件格式规范
+
+### 5.1 讨论记录 Markdown 格式
+```markdown
+# [讨论主题] - 第[轮次]轮
+
+## 基本信息
+- **开始时间**: [时间]
+- **持续时间**: [时长]分钟
+- **参与角色**: [角色列表]
+
+## 讨论内容
+
+### [组织者]: [总结/开场白]
+[内容]
+
+### [角色名称]
+[发言内容]
+
+### [客户]
+[客户输入内容]
+
+...
+
+## 本轮总结
+[总结内容]
+
+## Agent 评估
+- **[角色名称]**: [分数]/10
+  - [评价内容]
+- **[角色名称]**: [分数]/10
+  - [评价内容]
+...
+```
+
+### 5.2 用户输入文件格式
+```
+[用户输入内容]
+
+#END#
+```
+
+### 5.3 配置文件格式 (JSON)
+```json
+{
+  "llmProviders": [
+    {
+      "name": "OpenAI",
+      "apiUrl": "https://api.openai.com/v1",
+      "apiKey": "",
+      "models": ["gpt-4", "gpt-3.5-turbo"],
+      "defaultParams": {
+        "temperature": 0.7,
+        "max_tokens": 1000
+      }
     }
-    
-    return evaluations;
-  }
-  
-  async generateAgentConfig(description: string, context: DiscussionContext): Promise<AgentConfig> {
-    const prompt = this.buildAgentCreationPrompt(description, context);
-    const result = await this.callLLM(prompt);
-    
-    // 解析生成的agent配置
-    return this.parseAgentConfig(result);
-  }
-  
-  private buildSummaryPrompt(context: DiscussionContext): string {
-    return `作为头脑风暴的组织者，请针对以下主题的第${context.currentRound}轮讨论进行总结：
-主题：${context.topic}
-
-讨论内容：
-${this.formatDiscussionHistory(context.messages)}
-
-请提供：
-1. 本轮讨论的要点总结
-2. 已达成的共识
-3. 存在的分歧点
-4. 值得在下一轮深入探讨的关键问题
-
-总结应当客观、全面，并为下一轮讨论奠定基础。`;
-  }
-  
-  private buildEvaluationPrompt(agent: Agent, context: DiscussionContext): string {
-    // 构建用于评估agent表现的prompt
-  }
-  
-  private buildAgentCreationPrompt(description: string, context: DiscussionContext): string {
-    // 构建用于创建agent的prompt
-  }
-  
-  private async callLLM(prompt: string): Promise<string> {
-    // 调用LLM API
+  ],
+  "defaultRoundDuration": 30,
+  "defaultAgentCount": 5,
+  "filePaths": {
+    "config": "./config.json",
+    "discussions": "./discussions/",
+    "userInput": "./user_input.txt"
   }
 }
 ```
 
-## 数据模型
+## 6. 提示词设计
 
-### 消息模型
+### 6.1 组织者提示词模板
+```
+你是一个头脑风暴讨论的组织者。你需要根据当前讨论的主题和上下文，[任务描述]。
+当前讨论主题: {{topic}}
+当前讨论轮次: {{roundNumber}}
 
-```typescript
-interface Message {
-  id: string;
-  senderId: string;
-  senderType: "agent" | "customer" | "organizer";
-  content: string;
-  timestamp: Date;
-  roundId: number;
-}
+[特定任务指令]
+
+请确保你的回应简洁明了、中立客观，并能推动讨论向更深层次发展。
 ```
 
-### 评估模型
+### 6.2 Agent 系统提示词模板
+```
+你是一个名为{{name}}的专家，专长领域是{{specialty}}。
+在这场头脑风暴中，你需要从{{perspective}}的角度提供见解。
 
-```typescript
-interface AgentEvaluation {
-  agentId: string;
-  roundId: number;
-  score: number; // 1-10分
-  feedback: string;
-  strengths: string[];
-  weaknesses: string[];
-}
+当前讨论主题: {{topic}}
+当前讨论轮次: {{roundNumber}}
+
+请根据你的专业背景和角色，就当前讨论主题发表见解。你可以回应其他参与者的观点，
+也可以提出新的思路。请确保你的回应言之有物，并体现出你的专业特长。
+
+如果你认为目前没有需要补充的内容，你可以简短说明并跳过这轮发言。
 ```
 
-### 讨论轮次模型
+## 7. 错误处理策略
 
-```typescript
-interface DiscussionRound {
-  id: number;
-  startTime: Date;
-  endTime: Date | null;
-  duration: number; // 分钟
-  summary: string;
-  evaluations: AgentEvaluation[];
-  messages: Message[];
-}
-```
+### 7.1 LLM API 错误
+- 实现指数退避重试机制
+- 在 UI 上显示错误状态
+- 提供手动重试选项
+- 记录错误日志
 
-## 用户界面设计
+### 7.2 文件系统错误
+- 请求必要的文件访问权限
+- 在权限被拒绝时提供明确提示
+- 提供备选的数据存储方式（如浏览器本地存储）
+- 实现自动保存和恢复机制
 
-### 主界面布局
+### 7.3 用户输入错误
+- 验证用户输入格式
+- 提供明确的错误提示
+- 为复杂操作提供确认步骤
+- 支持撤销操作
 
-```
-+---------------------------------------------------+
-|                   主题区域                         |
-+---------------------------------------------------+
-|                                       | 控制面板   |
-|                                       |            |
-|                                       | - 暂停讨论  |
-|                                       | - 添加Agent |
-|        讨论内容显示区域                | - 移除Agent |
-|                                       | - 恢复讨论  |
-|                                       | - 结束轮次  |
-|                                       |            |
-|                                       | 状态信息:   |
-|                                       | - 当前轮次  |
-|                                       | - 剩余时间  |
-|                                       |            |
-+---------------------------------------------------+
-|                  输入区域                          |
-+---------------------------------------------------+
-```
+## 8. 测试策略
 
-### 组件设计
+### 8.1 单元测试
+- 为每个核心模块编写单元测试
+- 使用模拟对象替代外部依赖（如 LLM API）
+- 测试各种边界条件和错误情况
 
-1. **讨论区域组件**
-   - 消息气泡组件（区分不同发言者）
-   - 正在输入提示
-   - 自动滚动到最新消息
+### 8.2 集成测试
+- 测试模块间的交互
+- 验证数据流通过整个系统的正确性
+- 测试复杂的用户交互场景
 
-2. **控制面板组件**
-   - 讨论控制按钮
-   - Agent管理界面
-   - 轮次信息显示
+### 8.3 模拟 LLM 响应
+- 创建模拟 LLM 服务以加速测试
+- 预先准备多种响应场景
+- 模拟各种 API 延迟和错误情况
 
-3. **用户输入组件**
-   - 文本输入框
-   - 发送按钮
-   - 快捷操作菜单
+## 9. 性能优化
 
-## API接口设计
+### 9.1 API 调用优化
+- 合理设置并发请求限制
+- 实现请求合并和批处理
+- 缓存常用提示词和响应
 
-### LLM服务接口
+### 9.2 UI 性能
+- 使用虚拟滚动优化长对话显示
+- 延迟加载非关键资源
+- 实现高效的 DOM 更新策略
 
-```typescript
-interface LLMRequest {
-  provider: string;
-  model: string;
-  messages: {
-    role: "system" | "user" | "assistant";
-    content: string;
-  }[];
-  temperature: number;
-  maxTokens?: number;
-  apiParams?: Record<string, any>;
-}
+### 9.3 文件操作优化
+- 批量文件写入而非频繁小更新
+- 使用流式处理大文件
+- 实现增量更新而非全文件覆盖
 
-interface LLMResponse {
-  content: string;
-  usage: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
-}
+## 10. 实现路线图
 
-class LLMService {
-  async callLLM(request: LLMRequest): Promise<LLMResponse> {
-    // 根据provider选择不同的API实现
-    switch(request.provider) {
-      case "openai":
-        return this.callOpenAI(request);
-      case "anthropic":
-        return this.callAnthropic(request);
-      default:
-        throw new Error(`Unsupported LLM provider: ${request.provider}`);
-    }
-  }
-  
-  private async callOpenAI(request: LLMRequest): Promise<LLMResponse> {
-    // 调用OpenAI API
-  }
-  
-  private async callAnthropic(request: LLMRequest): Promise<LLMResponse> {
-    // 调用Anthropic API
-  }
-}
-```
+### 阶段一: 核心功能实现
+1. 实现基础 UI 界面
+2. 实现 LLM API 适配器
+3. 实现文件系统管理
+4. 实现基本的讨论流程
 
-## 测试策略
+### 阶段二: 功能完善
+1. 完善 Agent 管理和评估
+2. 实现讨论总结生成
+3. 优化用户交互流程
+4. 添加文件监控功能
 
-### 单元测试
-
-1. **Agent类测试**
-   - 测试prompt构建逻辑
-   - 测试消息历史记录管理
-   - 使用模拟LLM响应测试生成功能
-
-2. **DiscussionManager测试**
-   - 测试讨论流程控制
-   - 测试Agent管理功能
-   - 测试状态转换逻辑
-
-3. **OrganizerLLM测试**
-   - 测试各种prompt生成逻辑
-   - 测试评估解析算法
-   - 测试总结生成功能
-
-### 集成测试
-
-1. **LLM集成测试**
-   - 使用模拟服务器测试API调用
-   - 验证请求格式和响应处理
-
-2. **讨论流程测试**
-   - 测试完整的讨论轮次流程
-   - 验证状态变更和消息流转
-
-3. **UI集成测试**
-   - 测试用户交互流程
-   - 验证界面更新和状态同步
-
-## 实现流程
-
-1. **搭建基础架构**
-   - 创建项目脚手架
-   - 设置开发环境和测试框架
-
-2. **实现核心类**
-   - 实现LLM服务接口
-   - 实现Agent类
-   - 实现DiscussionManager类
-   - 实现OrganizerLLM类
-
-3. **开发UI组件**
-   - 实现基础布局和样式
-   - 实现各功能组件
-   - 集成状态管理系统
-
-4. **集成测试和调优**
-   - 编写并运行测试套件
-   - 调整prompt设计和LLM参数
-   - 优化用户体验
-
-5. **部署和发布**
-   - 配置生产环境
-   - 优化性能和资源利用
-   - 准备发布文档
-
-## 提示工程设计
-
-### Agent发言提示模板
-
-```
-你是一位{role}，在一个关于"{topic}"的头脑风暴讨论中。
-
-以下是你的专长领域：
-{expertise}
-
-请基于之前的讨论，提供你的专业见解。你可以：
-1. 分享新的视角或想法
-2. 对之前的发言提出建设性的质疑
-3. 深化已经提出的概念
-4. 提出新的可能性或解决方案
-
-当前讨论进展：
-{discussionHistory}
-
-最后一次发言是由{lastSpeaker}说的：
-"{lastMessage}"
-
-请以{role}的身份做出响应。如果你认为目前没有需要补充的内容，可以简短说明你此轮选择跳过发言。
-```
-
-### 组织者总结提示模板
-
-```
-你是一个头脑风暴会议的专业组织者，负责总结第{roundNumber}轮关于"{topic}"的讨论。
-
-完整的讨论记录如下：
-{fullDiscussion}
-
-请提供以下内容：
-1. 本轮讨论的3-5个关键见解或亮点
-2. 参与者达成的共识点
-3. 仍存在分歧或需要进一步探讨的问题
-4. 对下一轮讨论的2-3个建议方向
-
-你的总结应该：
-- 客观、公正地反映所有参与者的贡献
-- 突出最有价值和创新的想法
-- 识别出讨论中的模式和趋势
-- 为下一轮讨论奠定明确的基础
-
-总结应当清晰、结构化，长度适中（约300-500字）。
-```
-
-### Agent评估提示模板
-
-```
-作为头脑风暴组织者，请评估以下参与者在关于"{topic}"的第{roundNumber}轮讨论中的表现。
-
-参与者：{agentRole}（{agentId}）
-
-参与者的所有发言：
-{agentMessages}
-
-整体讨论上下文：
-{contextSummary}
-
-请对该参与者的表现进行评估，并提供1-10分的打分（10分为最高），评估应考虑以下方面：
-1. 贡献的相关性和价值
-2. 思维的创新性和深度
-3. 与其他参与者的互动质量
-4. 专业知识的应用
-5. 表达的清晰度和简洁性
-
-请提供：
-- 整体得分（1-10分）
-- 表现优势（2-3点）
-- 表现不足（2-3点）
-- 针对性改进建议
-
-评估应当客观、具体、建设性，并基于事实。
-```
-
-### Agent创建提示模板
-
-```
-作为头脑风暴组织者，请根据以下描述创建一个新的AI参与者角色配置。
-
-讨论主题：{topic}
-当前讨论概要：{discussionSummary}
-现有参与者角色：{existingRoles}
-
-用户请求添加的角色描述："{userDescription}"
-
-请生成一个完整的角色配置，包括：
-
-1. 角色名称（专业且具体）
-2. 系统提示（指导AI如何扮演该角色的详细说明）
-3. 专长领域（3-5个关键专长）
-4. 建议的模型参数：
-   - 合适的温度值（0.0-1.0）
-   - 其他API参数建议
-
-配置应当：
-- 与讨论主题高度相关
-- 补充现有参与者的专长和视角
-- 能够为讨论带来新的维度或专业知识
-- 具有明确的角色边界和专业特点
-
-请以JSON格式输出配置，确保系统提示部分详细、具体且能有效引导模型扮演该角色。
-```
+### 阶段三: 优化与扩展
+1. 性能优化和错误处理完善
+2. 增强 UI 体验
+3. 添加更多自定义选项
+4. 实现讨论导出和分享功能
