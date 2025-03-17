@@ -1,3 +1,3 @@
 .DS_Store
-workspace/.gradle
-workspace/kotlin-js-store
+.gradle
+kotlin-js-store
