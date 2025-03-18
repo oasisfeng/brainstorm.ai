@@ -29,20 +29,25 @@ class LlmTools(private val agentManager: AgentManager) {
      */
     private fun simulateLlmResponse(agent: Agent, messageHistory: List<Message>, promptOverride: String?): String {
         return when {
-            // If prompt override is provided, use that to guide response generation
             promptOverride != null -> generateResponseBasedOnOverride(
                 agent,
                 promptOverride,
                 messageHistory
             )
             
-            // Generate responses based on agent role
             agent.id == "organizer" -> generateOrganizerResponse(messageHistory)
-            agent.role.contains("Tech", ignoreCase = true) -> generateTechExpertResponse(messageHistory)
-            agent.role.contains("Business", ignoreCase = true) -> generateBusinessExpertResponse(messageHistory)
-            agent.role.contains("UX", ignoreCase = true) -> generateUXExpertResponse(messageHistory)
-            
-            // Generic expert response as fallback
+            agent.role.contains("Tech", ignoreCase = true) -> {
+                val speakingTurn = messageHistory.count { it.sender == agent.role }
+                generateTechExpertResponse(messageHistory, speakingTurn)
+            }
+            agent.role.contains("Business", ignoreCase = true) -> {
+                val speakingTurn = messageHistory.count { it.sender == agent.role }
+                generateBusinessExpertResponse(messageHistory, speakingTurn)
+            }
+            agent.role.contains("UX", ignoreCase = true) -> {
+                val speakingTurn = messageHistory.count { it.sender == agent.role }
+                generateUXExpertResponse(messageHistory, speakingTurn)
+            }
             else -> generateGenericExpertResponse(agent, messageHistory)
         }
     }
@@ -155,77 +160,180 @@ class LlmTools(private val agentManager: AgentManager) {
         }
     }
     
-    private fun generateTechExpertResponse(recentMessages: List<Message>): String {
-        return """
-            From a technical perspective, I see several important considerations:
+    private fun generateTechExpertResponse(recentMessages: List<Message>, turn: Int): String {
+        return when (turn) {
+            0 -> """
+                From an initial technical assessment:
+                
+                1. Core Architecture:
+                   - Recommend a microservices-based approach for flexibility
+                   - Need to evaluate cloud vs. on-premise hosting
+                   - Initial focus on critical APIs and data models
+                
+                2. Technology Stack:
+                   - Modern web technologies (Kotlin/JS, React) for frontend
+                   - Kotlin backend for type safety and coroutines support
+                   - PostgreSQL for data persistence with room to scale
+                
+                Let's start with this foundation and iterate based on requirements.
+                
+                invokeAgent(id='organizer')
+            """.trimIndent()
             
-            1. Implementation Feasibility:
-               - This concept would require integration with [relevant technology]
-               - We should consider using [specific framework/approach] for faster development
-               - The technical complexity is moderate, with key challenges in [specific area]
+            1 -> """
+                After considering the initial feedback, here are technical details:
+                
+                1. Security Considerations:
+                   - OAuth2 for authentication
+                   - End-to-end encryption for sensitive data
+                   - Regular security audits built into CI/CD
+                
+                2. Performance Optimizations:
+                   - Caching layer with Redis
+                   - CDN for static assets
+                   - Lazy loading for better initial load times
+                
+                These technical choices align well with our scalability goals.
+                
+                invokeAgent(id='organizer')
+            """.trimIndent()
             
-            2. Scalability:
-               - The architecture should account for [specific scaling needs]
-               - We'd need to implement [specific pattern] to ensure performance doesn't degrade
-            
-            3. Technical Risks:
-               - The main concerns would be [specific technical concerns]
-               - We could mitigate these by [specific approach]
-            
-            I believe with proper technical planning, this concept is quite viable.
-            
-            invokeAgent(id='organizer')
-        """.trimIndent()
+            else -> """
+                Building on previous discussions, here are advanced technical considerations:
+                
+                1. System Resilience:
+                   - Circuit breakers for external service calls
+                   - Retry mechanisms with exponential backoff
+                   - Comprehensive logging and monitoring
+                
+                2. DevOps Strategy:
+                   - Containerization with Kubernetes
+                   - Automated deployment pipelines
+                   - Blue-green deployment strategy
+                
+                This should give us a robust, production-ready system.
+                
+                invokeAgent(id='organizer')
+            """.trimIndent()
+        }
     }
-    
-    private fun generateBusinessExpertResponse(recentMessages: List<Message>): String {
-        return """
-            Looking at this topic from a business perspective:
+
+    private fun generateBusinessExpertResponse(recentMessages: List<Message>, turn: Int): String {
+        return when (turn) {
+            0 -> """
+                Initial business analysis shows:
+                
+                1. Market Size:
+                   - Total addressable market: $500M annually
+                   - Initial target segment: Mid-sized enterprises
+                   - Expected market penetration: 2-3% in year 1
+                
+                2. Competition:
+                   - 3 major players in the space
+                   - Current solutions lack AI integration
+                   - Entry barriers are moderate
+                
+                The timing appears favorable for market entry.
+                
+                invokeAgent(id='organizer')
+            """.trimIndent()
             
-            1. Market Opportunity:
-               - The target market segment size is approximately [market size estimate]
-               - Key competitors include [competitor examples] who are currently [doing something]
-               - Our unique value proposition would be [specific value]
+            1 -> """
+                Diving deeper into business strategy:
+                
+                1. Revenue Model:
+                   - Subscription-based pricing
+                   - Tiered features with enterprise options
+                   - Professional services revenue stream
+                
+                2. Growth Strategy:
+                   - Focus on key verticals initially
+                   - Strategic partnerships with system integrators
+                   - Content marketing and thought leadership
+                
+                These approaches should maximize our market opportunity.
+                
+                invokeAgent(id='organizer')
+            """.trimIndent()
             
-            2. Business Model:
-               - A [specific model] approach would work well here
-               - Revenue streams could include [specific streams]
-               - The cost structure would primarily involve [main costs]
-            
-            3. Go-to-Market Strategy:
-               - I recommend initially focusing on [specific segment]
-               - Strategic partnerships with [potential partners] would accelerate adoption
-            
-            Overall, I see strong business potential with proper positioning and execution.
-            
-            invokeAgent(id='organizer')
-        """.trimIndent()
+            else -> """
+                Focusing on execution strategy:
+                
+                1. Go-to-Market Timeline:
+                   - Beta launch in Q3
+                   - Full market release in Q4
+                   - International expansion in Year 2
+                
+                2. Key Performance Indicators:
+                   - Customer acquisition cost < $5000
+                   - Monthly churn rate < 2%
+                   - Net revenue retention > 120%
+                
+                This positions us for sustainable growth.
+                
+                invokeAgent(id='organizer')
+            """.trimIndent()
+        }
     }
-    
-    private fun generateUXExpertResponse(recentMessages: List<Message>): String {
-        return """
-            From a user experience standpoint, this topic presents interesting opportunities:
+
+    private fun generateUXExpertResponse(recentMessages: List<Message>, turn: Int): String {
+        return when (turn) {
+            0 -> """
+                Initial UX assessment reveals:
+                
+                1. User Research Findings:
+                   - Users struggle with complex workflows
+                   - Mobile access is a critical requirement
+                   - Integration with existing tools is key
+                
+                2. Design Principles:
+                   - Progressive disclosure of features
+                   - Consistent interaction patterns
+                   - Clear visual hierarchy
+                
+                These insights will guide our initial design direction.
+                
+                invokeAgent(id='organizer')
+            """.trimIndent()
             
-            1. User Needs:
-               - The primary user pain points this addresses are [specific pain points]
-               - User research suggests that [specific finding]
-               - Key user expectations would include [specific expectations]
+            1 -> """
+                Expanding on the user experience strategy:
+                
+                1. Information Architecture:
+                   - Three-level navigation hierarchy
+                   - Task-based organization
+                   - Contextual help system
+                
+                2. Interaction Design:
+                   - Gesture-based interactions for mobile
+                   - Real-time collaboration features
+                   - Inline editing capabilities
+                
+                This framework provides both power and simplicity.
+                
+                invokeAgent(id='organizer')
+            """.trimIndent()
             
-            2. Design Considerations:
-               - The interface should prioritize [specific design principles]
-               - User flow would need to accommodate [specific user behaviors]
-               - Accessibility considerations include [specific considerations]
-            
-            3. Testing Approach:
-               - I recommend [specific testing methodology] to validate our design
-               - Key metrics to track would include [specific metrics]
-            
-            If we center the user in our design process, this concept has excellent potential to deliver a compelling experience.
-            
-            invokeAgent(id='organizer')
-        """.trimIndent()
+            else -> """
+                Detailing the final UX implementation plan:
+                
+                1. User Testing Strategy:
+                   - Remote usability testing
+                   - A/B testing for key features
+                   - Analytics integration
+                
+                2. Accessibility Considerations:
+                   - WCAG 2.1 AA compliance
+                   - Screen reader optimization
+                   - Keyboard navigation support
+                
+                This ensures a universally accessible product.
+                
+                invokeAgent(id='organizer')
+            """.trimIndent()
+        }
     }
-    
+
     private fun generateGenericExpertResponse(agent: Agent, recentMessages: List<Message>): String {
         return """
             As a ${agent.role} focused on ${agent.focus}, I have several thoughts:
