@@ -1,3 +1,8 @@
 .DS_Store
-.gradle
-kotlin-js-store
+.vscode/
+.idea/
+build/
+.kotlin/
+.gradle/
+kotlin-js-store/
+local.properties
