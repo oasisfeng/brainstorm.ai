@@ -15,7 +15,8 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
-  Select
+  Select,
+  Markdown
 } from "@github/spark/components";
 import { useKV } from "@github/spark/hooks";
 import { 
@@ -462,7 +463,7 @@ function App() {
             {summary && (
               <Card className="mb-4 p-4 bg-accent-1">
                 <h3 className="font-medium mb-2">Summary</h3>
-                <p className="text-fg-secondary">{summary}</p>
+                <Markdown>{summary}</Markdown>
               </Card>
             )}
           </div>
@@ -477,9 +478,9 @@ function App() {
                   <UserCircle className="text-accent-secondary-9 mt-1" /> :
                   <ChatCircle className="text-accent-9 mt-1" />
                 }
-                <div>
+                <div className="flex-grow">
                   <h4 className="font-medium">{msg.agent}</h4>
-                  <p className="text-fg-secondary">{msg.message}</p>
+                  <Markdown>{msg.message}</Markdown>
                 </div>
               </div>
             </Card>
