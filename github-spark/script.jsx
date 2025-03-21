@@ -32,7 +32,9 @@ import {
   Trash,
   UserPlus,
   Gear,
-  ArrowCounterClockwise
+  ArrowCounterClockwise,
+  FloppyDisk,
+  FolderOpen
 } from "@phosphor-icons/react";
 
 function App() {
@@ -54,6 +56,12 @@ function App() {
   const [agentApiModel, setAgentApiModel] = useKV("agentApiModel", "");
   const [availableModels, setAvailableModels] = React.useState([]);
   const [isLoadingModels, setIsLoadingModels] = React.useState(false);
+  // Session management
+  const [sessions, setSessions] = useKV("sessions", []);
+  const [currentSessionName, setCurrentSessionName] = React.useState("");
+  const [newSessionName, setNewSessionName] = React.useState("");
+  const [showSaveDialog, setShowSaveDialog] = React.useState(false);
+  const [showLoadDialog, setShowLoadDialog] = React.useState(false);
 
   // Function to call custom LLM API
   const callLLM = async (prompt) => {
@@ -233,12 +241,149 @@ function App() {
     }
   }, [agentApiUrl]);
 
+  const saveSession = () => {
+    if (!newSessionName.trim()) return;
+    
+    const sessionData = {
+      name: newSessionName,
+      timestamp: new Date().toISOString(),
+      topic,
+      agents,
+      messages,
+      summary
+    };
+
+    const updatedSessions = [...sessions];
+    const existingIndex = sessions.findIndex(s => s.name === newSessionName);
+    
+    if (existingIndex >= 0) {
+      updatedSessions[existingIndex] = sessionData;
+    } else {
+      updatedSessions.push(sessionData);
+    }
+
+    setSessions(updatedSessions);
+    setCurrentSessionName(newSessionName);
+    setNewSessionName("");
+    setShowSaveDialog(false);
+  };
+
+  const loadSession = (sessionData) => {
+    setTopic(sessionData.topic);
+    setAgents(sessionData.agents);
+    setMessages(sessionData.messages);
+    setSummary(sessionData.summary);
+    setCurrentSessionName(sessionData.name);
+    setShowLoadDialog(false);
+  };
+
+  const deleteSession = (sessionName) => {
+    const updatedSessions = sessions.filter(s => s.name !== sessionName);
+    setSessions(updatedSessions);
+    if (currentSessionName === sessionName) {
+      setCurrentSessionName("");
+    }
+  };
+
   return (
     <SparkApp>
       <PageContainer maxWidth="large">
-        {/* Header with title and settings button */}
+        {/* Header with title, session name, and buttons */}
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold">AI Agent Brainstorming Session</h1>
+          <div>
+            <h1 className="text-2xl font-bold">AI Agent Brainstorming Session</h1>
+            {currentSessionName && (
+              <p className="text-fg-secondary mt-1">
+                Current session: {currentSessionName}
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            {/* Save Session Dialog */}
+            <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+              <DialogTrigger asChild>
+                <Button icon={<FloppyDisk />}>Save Session</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Save Session</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <Input
+                    placeholder="Enter session name"
+                    value={newSessionName}
+                    onChange={(e) => setNewSessionName(e.target.value)}
+                  />
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="secondary">Cancel</Button>
+                  </DialogClose>
+                  <Button 
+                    variant="primary" 
+                    onClick={saveSession}
+                    disabled={!newSessionName.trim()}
+                  >
+                    Save
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Load Session Dialog */}
+            <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
+              <DialogTrigger asChild>
+                <Button icon={<FolderOpen />}>Load Session</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Load Session</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {sessions.length === 0 ? (
+                    <p className="text-fg-secondary">No saved sessions found.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {sessions.map((session) => (
+                        <Card key={session.name} className="p-4">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <h3 className="font-medium">{session.name}</h3>
+                              <p className="text-sm text-fg-secondary">
+                                Topic: {session.topic}
+                              </p>
+                              <p className="text-xs text-fg-secondary">
+                                {new Date(session.timestamp).toLocaleString()}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="primary"
+                                onClick={() => loadSession(session)}
+                              >
+                                Load
+                              </Button>
+                              <Button
+                                variant="plain"
+                                icon={<Trash />}
+                                onClick={() => deleteSession(session.name)}
+                              />
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="secondary">Close</Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
           {/* Settings button */}
           <Dialog>
             <DialogTrigger asChild>
