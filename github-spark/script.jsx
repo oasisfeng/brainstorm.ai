@@ -25,6 +25,7 @@ function App() {
   // Custom Agent LLM API
   const [agentApiUrl, setAgentApiUrl] = useKV("agentApiUrl", "");
   const [agentApiModel, setAgentApiModel] = useKV("agentApiModel", "");
+  const [agentApiOptions, setAgentApiOptions] = useKV("agentApiOptions", "");
   const [availableModels, setAvailableModels] = React.useState([]);
   const [isLoadingModels, setIsLoadingModels] = React.useState(false);
   // Session management
@@ -38,11 +39,15 @@ function App() {
   const callLLM = async (prompt) => {
     if (agentApiUrl === "" || agentApiModel === "") return spark.llm(prompt);
     try {
-      const response = await fetch(`${agentApiUrl}//chat/completions`, {
+      let options = {};
+      try { options = agentApiOptions ? JSON.parse(agentApiOptions) : {}; }
+      catch (e) { console.warn("Invalid options JSON:", e); }
+      
+      const response = await fetch(`${agentApiUrl}/chat/completions`, {
         method: 'POST', headers: {
           'Content-Type': 'application/json',
           // Add any necessary headers here
-        }, body: JSON.stringify({ model: agentApiModel, messages: [{ role: "user", content: prompt }]})
+        }, body: JSON.stringify({ model: agentApiModel, messages: [{ role: "user", content: prompt }], ...options })
       });
       const data = await response.json();
       return data.choices[0].message.content;
@@ -336,13 +341,10 @@ function App() {
                 {/* Agent LLM API Section */}
                 <div className="space-y-4 mt-4">
                   <h3 className="font-medium">Agent LLM API</h3>
-                  <Input
-                    placeholder="Enter custom API endpoint URL"
-                    value={agentApiUrl}
-                    onChange={(e) => setAgentApiUrl(e.target.value)}
-                  />
+                  <Input placeholder="Enter custom API endpoint URL (before '/chat/completions')" value={agentApiUrl}
+                    onChange={(e) => setAgentApiUrl(e.target.value)} />
                   <div className="space-y-2">
-                    <label className="text-sm text-fg-secondary">Model Selection</label>
+                    <label className="text-sm text-fg-secondary">Model</label>
                     {agentApiUrl && (
                       <div className="flex gap-2">
                         <Select value={agentApiModel} onChange={(e) => setAgentApiModel(e.target.value)} className="flex-grow">
@@ -357,9 +359,14 @@ function App() {
                         >Refresh</Button>
                       </div>
                     )}
-                    <Input placeholder="Or enter model name" value={agentApiModel} onChange={(e) => setAgentApiModel(e.target.value)} className="mt-2"/>
+                    <Input placeholder="Model name (leave blank to use the internal LLM)"
+                      value={agentApiModel} onChange={(e) => setAgentApiModel(e.target.value)} className="mt-2"/>
+                    <div className="mt-4">
+                      <label className="text-sm text-fg-secondary">Custom options (JSON format)</label>
+                      <Input placeholder='{"temperature": 0.7, "top_p": 1, "reasoning_effort": "high"}'
+                        value={agentApiOptions} onChange={(e) => setAgentApiOptions(e.target.value)} />
+                    </div>
                   </div>
-                  <p className="text-sm text-fg-secondary">Leave blank to use the internal LLM.</p>
                 </div>
                 <DialogFooter>
                   <DialogClose asChild>
