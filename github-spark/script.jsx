@@ -247,7 +247,7 @@ function App() {
     if (autoSave && currentSessionName && (messages.length > 0 || summary)) {
       saveSession(currentSessionName);
     }
-  }, [autoSave, currentSessionName, messages, summary]);
+  }, [autoSave, currentSessionName, agents, messages, summary]);
 
   const saveSession = (sessionName) => {
     const sessionData = {
