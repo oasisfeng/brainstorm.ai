@@ -27,6 +27,7 @@ function App() {
   const [agentApiModel, setAgentApiModel] = useKV("agentApiModel", "");
   const [agentApiOptions, setAgentApiOptions] = useKV("agentApiOptions", "");
   const [useCustomApiForSummary, setUseCustomApiForSummary] = useKV("useCustomApiForSummary", false);
+  const [batchAgentResponses, setBatchAgentResponses] = useKV("batchAgentResponses", true);
   const [availableModels, setAvailableModels] = React.useState([]);
   const [isLoadingModels, setIsLoadingModels] = React.useState(false);
   // Session management
@@ -39,7 +40,11 @@ function App() {
   const callInternalLLM = async (prompt) => { return spark.llm(prompt); };
 
   const callLLM = async (prompt) => {
-    if (agentApiUrl === "" || agentApiModel === "") return callInternalLLM(prompt);
+    console.log("Calling LLM with prompt:\n", prompt);
+
+    if (agentApiUrl === "" || agentApiModel === "")
+       return callInternalLLM(prompt);
+
     try {
       let options = {};
       try { options = agentApiOptions ? JSON.parse(agentApiOptions) : {}; }
@@ -81,33 +86,82 @@ function App() {
     }
   };
 
+  // Function to generate a response for a single agent
+  const generateAgentResponse = async (agent, summary, currentMessages) => {
+    const agentPrompt = spark.llmPrompt`You are ${agent.name}, an expert in ${agent.expertise}, participating in a brainstorming session about "${topic}".
+    ${customInstructions ? `Additional instructions: ${customInstructions}` : ''}
+    Please contribute your own unique ideas, insights, and perspectives on the discussion so far, in the same language as the discussion.
+    Feel free to debate, challenge, or critically analyze the viewpoints presented by other participants.
+    Your response should be brief, informal, and conversational, similar to how you would speak in a casual group discussion,
+    but still add depth to the discussion through thought-provoking reflection and constructive debate.
+
+    ${summary ? `Summary of earlier rounds: \`\`\`\n${summary}\n\`\`\`` : ''}
+    Previous messages in the discussion: ${JSON.stringify(currentMessages)}
+    Return only your message content as plain text.`;
+
+    try {
+      const response = await callLLM(agentPrompt);
+      return { agent: agent.name, message: response };
+    } catch (error) {
+      console.error(`Error generating response for ${agent.name}:`, error);
+      return { agent: agent.name, message: `I'm having trouble formulating my thoughts right now.` };
+    }
+  };
+
+  // Function to generate responses for multiple agents in a single call
+  const generateBatchAgentResponses = async (agents, summary, currentMessages) => {
+    const prompt = spark.llmPrompt`You are simulating a group discussion between these experts about "${topic}":
+    ${JSON.stringify(agents)}
+    ${customInstructions ? `Additional instructions: ${customInstructions}` : ''}
+    
+    Each expert should contribute their unique perspective based on their expertise. Please generate one response for each expert.
+    ${summary ? `Summary of earlier rounds: \`\`\`\n${summary}\n\`\`\`` : ''}
+    Previous messages in the discussion: ${JSON.stringify(currentMessages)}
+    
+    Return a JSON array of objects with 'agent' (expert name) and 'message' (their contribution) properties.`;
+
+    try {
+      const response = await callLLM(prompt);
+      return JSON.parse(response);
+    } catch (error) {
+      console.error("Error generating batch responses:", error);
+      return agents.map(agent => ({
+        agent: agent.name,
+        message: `I'm having trouble formulating my thoughts right now.`
+      }));
+    }
+  };
+
   // Function to start or continue discussion
   const startDiscussion = async (selectedAgents, rounds) => {
     if (rounds === 0) {
       setIsGenerating(false);
       return;
     }
-    const discussionPrompt = spark.llmPrompt`You are hosting a brainstorming session on "${topic}". 
-    The participants are: ${JSON.stringify(selectedAgents)}.
-    ${summary ? `Summary of earlier rounds: ${summary}` : ''}
-    ${messages.length > 0 ? `Previous messages: ${JSON.stringify(messages)}` : "This is the start of the discussion."}
-    ${customInstructions ? `Additional instructions for agents: ${customInstructions}` : ''}
-    Generate one response from each agent, making sure they build on previous ideas and interact with each other.
-    Please respond in the same language as the topic given by user.
-    Return a JSON array of messages, each with 'agent' and 'message' properties.`;
-
+    
+    setIsGenerating(true);
     try {
-      const response = await callLLM(discussionPrompt);
-      const newMessages = JSON.parse(response);
-      setMessages(prev => [...prev, ...newMessages]);
-      setCurrentRound(prev => prev + 1);
-      if (rounds > 1) {
-        startDiscussion(selectedAgents, rounds - 1);
-      } else {
-        setIsGenerating(false);
+      // Process one round at a time
+      for (let i = 0; i < rounds; i++) {
+        if (batchAgentResponses) {
+          // Generate all agent responses in a single call
+          const responses = await generateBatchAgentResponses(selectedAgents, summary, messages);
+          setMessages(prev => [...prev, ...responses]);
+        } else {
+          // Generate responses from each agent independently
+          for (const agent of selectedAgents) {
+            const newMessage = await generateAgentResponse(agent, summary, messages);
+            // Update messages immediately after each agent responds for a more dynamic feel
+            setMessages(prev => [...prev, newMessage]);
+          }
+        }
+
+        // Update the current round after all agents have responded
+        setCurrentRound(rounds => rounds + 1);
       }
     } catch (error) {
       console.error("Error in discussion:", error);
+    } finally {
       setIsGenerating(false);
     }
   };
@@ -118,24 +172,6 @@ function App() {
     const newMessage = { agent: "User", message: userMessage };
     setMessages(prev => [...prev, newMessage]);
     setUserMessage("");
-    const responsePrompt = spark.llmPrompt`In this brainstorming session about "${topic}",
-    the user just said: "${userMessage}".
-    Previous messages: ${JSON.stringify(messages)}
-    ${customInstructions ? `Additional instructions for agents: ${customInstructions}` : ''}
-    Generate one response from each AI agent, making them react to the user's input.
-    Please respond in the same language as the topic given by user.
-    Return a JSON array of messages, each with 'agent' and 'message' properties.`;
-
-    setIsGenerating(true);
-    try {
-      const response = await callLLM(responsePrompt);
-      const newMessages = JSON.parse(response);
-      setMessages(prev => [...prev, ...newMessages]);
-    } catch (error) {
-      console.error("Error generating responses:", error);
-    } finally {
-      setIsGenerating(false);
-    }
   };
 
   // Function to generate discussion summary
@@ -333,6 +369,11 @@ function App() {
                 <DialogHeader>
                   <DialogTitle>Settings</DialogTitle>
                 </DialogHeader>
+                {/* Batch Agent Responses */}
+                <div className="flex items-center gap-2">
+                  <Checkbox checked={batchAgentResponses} onCheckedChange={setBatchAgentResponses} />
+                  <label className="text-sm text-fg-secondary">Generate one round of agent responses in a batch</label>
+                </div>
                 {/* Custom Instructions */}
                 <div className="space-y-4">
                   <h3 className="font-medium">Custom Instructions</h3>
@@ -468,7 +509,7 @@ function App() {
         )}
 
         {/* Discussion section */}
-        {(messages.length > 0 || summary != "") && (
+        {(messages.length > 0 || summary !== "") && (
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Discussion</h2>
@@ -518,7 +559,7 @@ function App() {
         )}
 
         {/* Continue Discussion buttons */}
-        {(messages.length > 0 || summary != "") && !isGenerating && (
+        {(messages.length > 0 || summary !== "") && !isGenerating && (
           <div className="mt-8">
             <h3 className="font-medium mb-4">Continue Discussion</h3>
             <div className="flex gap-4">
