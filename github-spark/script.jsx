@@ -26,6 +26,7 @@ function App() {
   const [agentApiUrl, setAgentApiUrl] = useKV("agentApiUrl", "");
   const [agentApiModel, setAgentApiModel] = useKV("agentApiModel", "");
   const [agentApiOptions, setAgentApiOptions] = useKV("agentApiOptions", "");
+  const [useCustomApiForSummary, setUseCustomApiForSummary] = useKV("useCustomApiForSummary", false);
   const [availableModels, setAvailableModels] = React.useState([]);
   const [isLoadingModels, setIsLoadingModels] = React.useState(false);
   // Session management
@@ -35,9 +36,10 @@ function App() {
   const [showSaveDialog, setShowSaveDialog] = React.useState(false);
   const [showLoadDialog, setShowLoadDialog] = React.useState(false);
 
-  // Function to call custom LLM API
+  const callInternalLLM = async (prompt) => { return spark.llm(prompt); };
+
   const callLLM = async (prompt) => {
-    if (agentApiUrl === "" || agentApiModel === "") return spark.llm(prompt);
+    if (agentApiUrl === "" || agentApiModel === "") return callInternalLLM(prompt);
     try {
       let options = {};
       try { options = agentApiOptions ? JSON.parse(agentApiOptions) : {}; }
@@ -139,7 +141,7 @@ function App() {
 
     setIsGenerating(true);
     try {
-      const response = await callLLM(summaryPrompt);
+      const response = useCustomApiForSummary ? await callLLM(summaryPrompt) : await callInternalLLM(summaryPrompt);
       setSummary(response);
     } catch (error) {
       console.error("Error generating summary:", error);
@@ -293,14 +295,10 @@ function App() {
                           <div className="flex justify-between items-center">
                             <div>
                               <h3 className="font-medium">{session.name}</h3>
-                              <p className="text-sm text-fg-secondary">
-                                Topic: {session.topic}
-                              </p>
-                              <p className="text-xs text-fg-secondary">
-                                {new Date(session.timestamp).toLocaleString()}
-                              </p>
+                              <p className="text-sm text-fg-secondary">{session.topic}</p>
+                              <p className="text-xs text-fg-secondary">{new Date(session.timestamp).toLocaleString()}</p>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 ml-4">
                               <Button variant="primary" onClick={() => { loadSession(session); setShowLoadDialog(false); }}
                               >Load</Button>
                               <Button variant="plain" icon={<Trash />} onClick={() => deleteSession(session.name)} />
@@ -328,7 +326,7 @@ function App() {
                 <DialogHeader>
                   <DialogTitle>Settings</DialogTitle>
                 </DialogHeader>
-                {/* Custom Instructions Section */}
+                {/* Custom Instructions */}
                 <div className="space-y-4">
                   <h3 className="font-medium">Custom Instructions</h3>
                   <Textarea
@@ -338,9 +336,9 @@ function App() {
                     rows={4}
                   />
                 </div>
-                {/* Agent LLM API Section */}
+                {/* Custom LLM API */}
                 <div className="space-y-4 mt-4">
-                  <h3 className="font-medium">Agent LLM API</h3>
+                  <h3 className="font-medium">Custom LLM API</h3>
                   <Input placeholder="Enter custom API endpoint URL (before '/chat/completions')" value={agentApiUrl}
                     onChange={(e) => setAgentApiUrl(e.target.value)} />
                   <div className="space-y-2">
@@ -365,6 +363,10 @@ function App() {
                       <label className="text-sm text-fg-secondary">Custom options (JSON format)</label>
                       <Input placeholder='{"temperature": 0.7, "top_p": 1, "reasoning_effort": "high"}'
                         value={agentApiOptions} onChange={(e) => setAgentApiOptions(e.target.value)} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox checked={useCustomApiForSummary} onCheckedChange={setUseCustomApiForSummary} />
+                      <label className="text-sm text-fg-secondary">Use custom API for discussion summaries</label>
                     </div>
                   </div>
                 </div>
