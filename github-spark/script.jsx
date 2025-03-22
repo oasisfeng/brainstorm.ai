@@ -311,7 +311,7 @@ function App() {
                 <div className="space-y-4">
                   <Input
                     placeholder="Enter session name"
-                    value={newSessionName}
+                    value={newSessionName || currentSessionName}
                     onChange={(e) => setNewSessionName(e.target.value)}
                   />
                 </div>
@@ -321,8 +321,8 @@ function App() {
                   </DialogClose>
                   <Button 
                     variant="primary" 
-                    onClick={saveSession}
-                    disabled={!newSessionName.trim()}
+                    onClick={() => saveSession(newSessionName || currentSessionName)}
+                    disabled={!newSessionName.trim() && !currentSessionName}
                   >
                     Save
                   </Button>
