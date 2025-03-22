@@ -291,12 +291,7 @@ function App() {
         {/* Header with title, session name, and buttons */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-2xl font-bold">AI Agent Brainstorming Session</h1>
-            {currentSessionName && (
-              <p className="text-fg-secondary mt-1">
-                Current session: {currentSessionName}
-              </p>
-            )}
+            <h1 className="text-2xl font-bold">Brainstorm.AI</h1>
           </div>
           <div className="flex gap-2">
             {/* Save Session Dialog */}
