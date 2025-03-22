@@ -16,6 +16,7 @@ import {
   DialogFooter,
   DialogClose,
   Select,
+  Checkbox,
   Markdown
 } from "@github/spark/components";
 import { useKV } from "@github/spark/hooks";
@@ -60,6 +61,7 @@ function App() {
   const [sessions, setSessions] = useKV("sessions", []);
   const [currentSessionName, setCurrentSessionName] = React.useState("");
   const [newSessionName, setNewSessionName] = React.useState("");
+  const [autoSave, setAutoSave] = React.useState(false);
   const [showSaveDialog, setShowSaveDialog] = React.useState(false);
   const [showLoadDialog, setShowLoadDialog] = React.useState(false);
 
@@ -241,11 +243,15 @@ function App() {
     }
   }, [agentApiUrl]);
 
-  const saveSession = () => {
-    if (!newSessionName.trim()) return;
-    
+  React.useEffect(() => {
+    if (autoSave && currentSessionName && (messages.length > 0 || summary)) {
+      saveSession(currentSessionName);
+    }
+  }, [autoSave, currentSessionName, messages, summary]);
+
+  const saveSession = (sessionName) => {
     const sessionData = {
-      name: newSessionName,
+      name: sessionName,
       timestamp: new Date().toISOString(),
       topic,
       agents,
@@ -254,7 +260,7 @@ function App() {
     };
 
     const updatedSessions = [...sessions];
-    const existingIndex = sessions.findIndex(s => s.name === newSessionName);
+    const existingIndex = sessions.findIndex(s => s.name === sessionName);
     
     if (existingIndex >= 0) {
       updatedSessions[existingIndex] = sessionData;
@@ -263,9 +269,6 @@ function App() {
     }
 
     setSessions(updatedSessions);
-    setCurrentSessionName(newSessionName);
-    setNewSessionName("");
-    setShowSaveDialog(false);
   };
 
   const loadSession = (sessionData) => {
@@ -274,7 +277,6 @@ function App() {
     setMessages(sessionData.messages);
     setSummary(sessionData.summary);
     setCurrentSessionName(sessionData.name);
-    setShowLoadDialog(false);
   };
 
   const deleteSession = (sessionName) => {
@@ -309,18 +311,22 @@ function App() {
                     value={newSessionName || currentSessionName}
                     onChange={(e) => setNewSessionName(e.target.value)}
                   />
+                  <div className="flex items-center gap-2">
+                    <Checkbox checked={autoSave} onCheckedChange={setAutoSave}/>
+                    <label className="text-sm text-fg-secondary">Auto-save changes to this session</label>
+                  </div>
                 </div>
                 <DialogFooter>
                   <DialogClose asChild>
                     <Button variant="secondary">Cancel</Button>
                   </DialogClose>
-                  <Button 
-                    variant="primary" 
-                    onClick={() => saveSession(newSessionName || currentSessionName)}
-                    disabled={!newSessionName.trim() && !currentSessionName}
-                  >
-                    Save
-                  </Button>
+                  <Button variant="primary" onClick={() => {
+                      saveSession(newSessionName || currentSessionName);
+                      setCurrentSessionName(newSessionName);
+                      setNewSessionName("");
+                      setShowSaveDialog(false);                  
+                    }} disabled={!newSessionName.trim() && !currentSessionName}
+                  >Save</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -352,17 +358,9 @@ function App() {
                               </p>
                             </div>
                             <div className="flex gap-2">
-                              <Button
-                                variant="primary"
-                                onClick={() => loadSession(session)}
-                              >
-                                Load
-                              </Button>
-                              <Button
-                                variant="plain"
-                                icon={<Trash />}
-                                onClick={() => deleteSession(session.name)}
-                              />
+                              <Button variant="primary" onClick={() => { loadSession(session); setShowLoadDialog(false); }}
+                              >Load</Button>
+                              <Button variant="plain" icon={<Trash />} onClick={() => deleteSession(session.name)} />
                             </div>
                           </div>
                         </Card>
