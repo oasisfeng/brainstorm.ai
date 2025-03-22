@@ -52,7 +52,14 @@ function App() {
         }, body: JSON.stringify({ model: agentApiModel, messages: [{ role: "user", content: prompt }], ...options })
       });
       const data = await response.json();
-      return data.choices[0].message.content;
+      const llmResponse = data.choices[0].message.content;
+      // Clean up the response
+      const cleanedResponse = llmResponse
+        .replace(/<think>[\s\S]*?<\/think>\s*/g, '') // Remove thinking process and following whitespace
+        .replace(/^\s*```(?:json)?\s*/m, '') // Remove leading code block marker and whitespace
+        .replace(/\s*```\s*$/m, '') // Remove trailing code block marker and whitespace
+        .trim();
+      return cleanedResponse;
     } catch (error) {
       console.error("Error calling custom LLM:", error);
       throw error;
