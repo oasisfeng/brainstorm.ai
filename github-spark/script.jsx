@@ -10,7 +10,7 @@ import { Robot, ChatCircle, Brain, Lightning, ListBullets, Plus, UserCircle, Sen
 import { useKV } from "@github/spark/hooks";
 
 function App() {
-  // State variables
+  // Discussion
   const [topic, setTopic] = React.useState("");
   const [messages, setMessages] = React.useState([]);
   const [isGenerating, setIsGenerating] = React.useState(false);
@@ -423,13 +423,9 @@ function App() {
                       <div className="flex gap-2">
                         <Select value={agentApiModel} onChange={(e) => setAgentApiModel(e.target.value)} className="flex-grow">
                           <option value="">Select a model</option>
-                          {availableModels.map((model) => (
-                            <option key={model.id} value={model.id}>
-                              {model.id}
-                            </option>
-                          ))}
+                          {availableModels.map((model) => (<option key={model.id} value={model.id}>{model.id}</option>))}
                         </Select>
-                        <Button icon={<Lightning />} onClick={fetchAvailableModels} disabled={isLoadingModels}
+                        <Button icon={<ArrowCounterClockwise />} onClick={fetchAvailableModels} disabled={isLoadingModels}
                         >Refresh</Button>
                       </div>
                     )}
@@ -606,33 +602,21 @@ function App() {
         )}
 
         {/* Loading indicator */}
-        {isGenerating && (
-          <div className="text-center mt-4">
-            <p className="text-fg-secondary">
-              {currentRound > 0 ? `Generating round ${currentRound + 1}...` : 'Starting discussion...'}
-            </p>
-          </div>
-        )}
+        {isGenerating && (<div className="text-center mt-4"><p className="text-fg-secondary">Thinking...</p></div>)}
 
         {/* Reflection Dialog */}
         <Dialog open={showReflectionDialog} onOpenChange={setShowReflectionDialog}>
           <DialogContent>
             <DialogHeader><DialogTitle>Improved Instructions</DialogTitle></DialogHeader>
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-medium mb-2">Current instructions</h3>
-                  <Card className="p-4 bg-accent-1 h-full overflow-auto">
-                    <Markdown>{customInstructions || "No custom instructions."}</Markdown>
-                  </Card>
-                </div>
-                <div>
-                  <h3 className="font-medium mb-2">Suggested instructions</h3>
-                  <Card className="p-4 bg-accent-2 h-full overflow-auto">
-                    <Markdown>{suggestedInstructions}</Markdown>
-                  </Card>
-                </div>
-              </div>
+              <h3 className="font-medium mb-2">Current instructions</h3>
+              <Card className="p-4 bg-accent-1 overflow-auto">
+                <Markdown>{customInstructions || "No custom instructions."}</Markdown>
+              </Card>
+              <h3 className="font-medium mb-2">Suggested instructions</h3>
+              <Card className="p-4 bg-accent-2 overflow-auto">
+                <Markdown>{suggestedInstructions}</Markdown>
+              </Card>
             </div>
             <DialogFooter>
               <DialogClose asChild><Button variant="secondary">Discard</Button></DialogClose>
