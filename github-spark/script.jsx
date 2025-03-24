@@ -607,16 +607,14 @@ function App() {
         {/* Reflection Dialog */}
         <Dialog open={showReflectionDialog} onOpenChange={setShowReflectionDialog}>
           <DialogContent>
-            <DialogHeader><DialogTitle>Improved Instructions</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>Reflection</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <h3 className="font-medium mb-2">Current instructions</h3>
               <Card className="p-4 bg-accent-1 overflow-auto">
                 <Markdown>{customInstructions || "No custom instructions."}</Markdown>
               </Card>
               <h3 className="font-medium mb-2">Suggested instructions</h3>
-              <Card className="p-4 bg-accent-2 overflow-auto">
-                <Markdown>{suggestedInstructions}</Markdown>
-              </Card>
+              <Textarea value={suggestedInstructions} onChange={(e) => setSuggestedInstructions(e.target.value)} minRows={4} autoGrow />
             </div>
             <DialogFooter>
               <DialogClose asChild><Button variant="secondary">Discard</Button></DialogClose>
