@@ -25,6 +25,7 @@ function App() {
   // Custom Agent LLM API
   const [agentApiUrl, setAgentApiUrl] = useKV("agentApiUrl", "");
   const [agentApiModel, setAgentApiModel] = useKV("agentApiModel", "");
+  const [agentApiKey, setAgentApiKey] = useKV("agentApiKey", "");
   const [agentApiOptions, setAgentApiOptions] = useKV("agentApiOptions", "");
   const [useCustomApiForSummary, setUseCustomApiForSummary] = useKV("useCustomApiForSummary", false);
   const [batchAgentResponses, setBatchAgentResponses] = useKV("batchAgentResponses", true);
@@ -37,14 +38,15 @@ function App() {
   const [showSaveDialog, setShowSaveDialog] = React.useState(false);
   const [showLoadDialog, setShowLoadDialog] = React.useState(false);
 
-  const callInternalLLM = async (prompt) => { return spark.llm(prompt); };
+  const callInternalLLM = async (prompt) => {
+    console.log("Calling LLM:\n", prompt);
+    return spark.llm(prompt);
+  };
 
   const callLLM = async (prompt) => {
-    console.log("Calling LLM with prompt:\n", prompt);
+    if (agentApiUrl === "" || agentApiModel === "") return callInternalLLM(prompt);
 
-    if (agentApiUrl === "" || agentApiModel === "")
-       return callInternalLLM(prompt);
-
+    console.log("Calling custom LLM:\n", prompt);
     try {
       let options = {};
       try { options = agentApiOptions ? JSON.parse(agentApiOptions) : {}; }
@@ -53,7 +55,7 @@ function App() {
       const response = await fetch(`${agentApiUrl}/chat/completions`, {
         method: 'POST', headers: {
           'Content-Type': 'application/json',
-          // Add any necessary headers here
+          ...(agentApiKey && { 'Authorization': `Bearer ${agentApiKey}` }),
         }, body: JSON.stringify({ model: agentApiModel, messages: [{ role: "user", content: prompt }], ...options })
       });
       const data = await response.json();
@@ -389,8 +391,10 @@ function App() {
                 {/* Custom LLM API */}
                 <div className="space-y-4 mt-4">
                   <h3 className="font-medium">Custom LLM API</h3>
-                  <Input placeholder="Enter custom API endpoint URL (before '/chat/completions')" value={agentApiUrl}
-                    onChange={(e) => setAgentApiUrl(e.target.value)} />
+                  <Input placeholder="Enter custom API endpoint URL (before '/chat/completions')"
+                    value={agentApiUrl} onChange={(e) => setAgentApiUrl(e.target.value)} />
+                  <Input type="password" placeholder="API key"
+                    value={agentApiKey} onChange={(e) => setAgentApiKey(e.target.value)} />
                   <div className="space-y-2">
                     <label className="text-sm text-fg-secondary">Model</label>
                     {agentApiUrl && (
