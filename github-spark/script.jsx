@@ -37,6 +37,9 @@ function App() {
   const [autoSave, setAutoSave] = React.useState(false);
   const [showSaveDialog, setShowSaveDialog] = React.useState(false);
   const [showLoadDialog, setShowLoadDialog] = React.useState(false);
+  // Reflection
+  const [suggestedInstructions, setSuggestedInstructions] = React.useState("");
+  const [showReflectionDialog, setShowReflectionDialog] = React.useState(false);
 
   const callInternalLLM = async (prompt) => {
     console.log("Calling LLM:\n", prompt);
@@ -280,6 +283,25 @@ function App() {
       setCurrentSessionName("");
     }
   };
+
+  function handleReflect() {
+    setIsGenerating(true);
+    const reflectionPrompt = spark.llmPrompt`Reflect on the current session about "${topic}". 
+    Agents: ${JSON.stringify(agents)}
+    Messages: ${JSON.stringify(messages)}
+    Current instructions: ${customInstructions}
+    Provide an improved version of the instructions as plain text.`;
+    
+    callLLM(reflectionPrompt).then((response) => {
+      setSuggestedInstructions(response.trim());
+      setShowReflectionDialog(true);
+      setIsGenerating(false);
+    }).catch((error) => {
+      console.error("Error reflecting on discussion:", error);
+      setIsGenerating(false);
+    });
+  }
+
 
   return (
     <SparkApp>
@@ -576,6 +598,9 @@ function App() {
                   }}
                 >{rounds} {rounds === 1 ? 'Round' : 'Rounds'}</Button>
               ))}
+              <div className="ml-auto">
+                <Button onClick={handleReflect} variant="primary" icon={<Lightning />}>Reflect</Button>
+              </div>
             </div>
           </div>
         )}
@@ -588,6 +613,36 @@ function App() {
             </p>
           </div>
         )}
+
+        {/* Reflection Dialog */}
+        <Dialog open={showReflectionDialog} onOpenChange={setShowReflectionDialog}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Improved Instructions</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-medium mb-2">Current instructions</h3>
+                  <Card className="p-4 bg-accent-1 h-full overflow-auto">
+                    <Markdown>{customInstructions || "No custom instructions."}</Markdown>
+                  </Card>
+                </div>
+                <div>
+                  <h3 className="font-medium mb-2">Suggested instructions</h3>
+                  <Card className="p-4 bg-accent-2 h-full overflow-auto">
+                    <Markdown>{suggestedInstructions}</Markdown>
+                  </Card>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild><Button variant="secondary">Discard</Button></DialogClose>
+              <Button variant="primary" onClick={() => {
+                setCustomInstructions(suggestedInstructions);
+                setShowReflectionDialog(false);
+              }}>Accept</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </PageContainer>
     </SparkApp>
   );
