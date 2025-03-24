@@ -110,15 +110,17 @@ function App() {
 
   // Function to generate responses for multiple agents in a single call
   const generateBatchAgentResponses = async (agents, summary, currentMessages) => {
-    const prompt = spark.llmPrompt`You are simulating a group discussion between these experts about "${topic}":
-    ${JSON.stringify(agents)}
-    ${customInstructions ? `Additional instructions: ${customInstructions}` : ''}
-    
-    Each expert should contribute their unique perspective based on their expertise. Please generate one response for each expert.
+    const prompt = spark.llmPrompt`You are simulating a brainstorming session on "${topic}". 
+    The participants are: ${JSON.stringify(agents)}.
     ${summary ? `Summary of earlier rounds: \`\`\`\n${summary}\n\`\`\`` : ''}
-    Previous messages in the discussion: ${JSON.stringify(currentMessages)}
-    
-    Return a JSON array of objects with 'agent' (expert name) and 'message' (their contribution) properties.`;
+    ${messages.length > 0 ? `Previous messages: ${JSON.stringify(messages)}` : "This is the start of the discussion."}
+
+    Each expert must bring a contrarian and critical perspective based on their expertise.
+
+    Generate one or more responses from each participant in arbitrary order suited for the ongoing debate.
+    Please respond in the same language as the topic provided by user.
+    ${customInstructions ? `Additional instructions: ${customInstructions}` : ''}
+    Return a JSON array of objects with 'agent' (expert name) and 'message' properties.`;
 
     try {
       const response = await callLLM(prompt);
