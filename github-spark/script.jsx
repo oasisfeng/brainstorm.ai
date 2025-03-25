@@ -18,6 +18,8 @@ function App() {
   const [agents, setAgents] = React.useState([]);
   const [summary, setSummary] = React.useState("");
   const [userMessage, setUserMessage] = React.useState("");
+  const [deletedMessages, setDeletedMessages] = React.useState(new Map());
+  // Agent management
   const [editingAgent, setEditingAgent] = React.useState(null);
   const [newAgentName, setNewAgentName] = React.useState("");
   const [newAgentExpertise, setNewAgentExpertise] = React.useState("");
@@ -304,6 +306,27 @@ function App() {
     });
   }
 
+  const deleteMessage = (index) => {
+    const message = messages[index];
+    setDeletedMessages(prev => new Map(prev).set(index, message));
+    setMessages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const undoDelete = (index) => {
+    const message = deletedMessages.get(index);
+    if (message) {
+      setMessages(prev => {
+        const next = [...prev];
+        next.splice(index, 0, message);
+        return next;
+      });
+      setDeletedMessages(prev => {
+        const next = new Map(prev);
+        next.delete(index);
+        return next;
+      });
+    }
+  };
 
   return (
     <SparkApp>
@@ -567,13 +590,27 @@ function App() {
                     <ChatCircle className="text-accent-9 mt-1" />
                   }
                   <div className="flex-grow">
+                    <div className="flex justify-between">
                     <h4 className="font-medium">{msg.agent}</h4>
+                      <Button variant="plain" size="small" icon={<Trash />}
+                        aria-label="Delete message" onClick={() => deleteMessage(index)} />
+                    </div>
                     <Markdown>{msg.message}</Markdown>
                   </div>
                 </div>
               </Card>
             );
           })}
+          {/* Deleted message placeholders */}
+          {Array.from(deletedMessages.entries()).map(([index, msg]) => (
+            <Card key={`deleted-${index}`} className="p-2 bg-accent-1">
+              <div className="flex mx-8 items-center justify-between text-sm text-fg-secondary">
+                <span>Message deleted</span>
+                <Button variant="plain" size="small" onClick={() => undoDelete(index)}
+                >Undo</Button>
+              </div>
+            </Card>
+          ))}
         </div>
 
         {/* User input */}
