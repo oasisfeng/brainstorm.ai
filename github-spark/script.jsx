@@ -106,10 +106,10 @@ function App() {
 
     try {
       const response = await callLLM(agentPrompt);
-      return { agent: agent.name, message: response };
+      return { agent: agent.name, message: response, timestamp: Date.now() };
     } catch (error) {
       console.error(`Error generating response for ${agent.name}:`, error);
-      return { agent: agent.name, message: `I'm having trouble formulating my thoughts right now.` };
+      return { agent: agent.name, message: `I'm having trouble formulating my thoughts right now.`, timestamp: Date.now() };
     }
   };
 
@@ -129,12 +129,14 @@ function App() {
 
     try {
       const response = await callLLM(prompt);
-      return JSON.parse(response);
+      const responses = JSON.parse(response);
+      return responses.map(r => ({ ...r, timestamp: Date.now() }));
     } catch (error) {
       console.error("Error generating batch responses:", error);
       return agents.map(agent => ({
         agent: agent.name,
-        message: `I'm having trouble formulating my thoughts right now.`
+        message: `I'm having trouble formulating my thoughts right now.`,
+        timestamp: Date.now()
       }));
     }
   };
@@ -176,7 +178,7 @@ function App() {
   // Function to add user message to discussion
   const addUserMessage = async () => {
     if (!userMessage.trim()) return;
-    const newMessage = { agent: "User", message: userMessage };
+    const newMessage = { agent: "User", message: userMessage, timestamp: Date.now() };
     setMessages(prev => [...prev, newMessage]);
     setUserMessage("");
   };
@@ -555,20 +557,23 @@ function App() {
 
         {/* Messages display */}
         <div className="space-y-4">
-          {messages.map((msg, index) => (
-            <Card key={index} className="p-4">
-              <div className="flex gap-2">
-                {msg.agent === "User" ? 
-                  <UserCircle className="text-accent-secondary-9 mt-1" /> :
-                  <ChatCircle className="text-accent-9 mt-1" />
-                }
-                <div className="flex-grow">
-                  <h4 className="font-medium">{msg.agent}</h4>
-                  <Markdown>{msg.message}</Markdown>
+          {messages.map((msg, index) => {
+            const isNewMessage = Date.now() - (msg.timestamp || 0) < 10000; // Messages less than 10 seconds old
+            return (
+              <Card key={index} className="p-4" style={isNewMessage ? { backgroundColor: '#d4edda' } : {}}>
+                <div className="flex gap-2">
+                  {msg.agent === "User" ? 
+                    <UserCircle className="text-accent-secondary-9 mt-1" /> :
+                    <ChatCircle className="text-accent-9 mt-1" />
+                  }
+                  <div className="flex-grow">
+                    <h4 className="font-medium">{msg.agent}</h4>
+                    <Markdown>{msg.message}</Markdown>
+                  </div>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
 
         {/* User input */}

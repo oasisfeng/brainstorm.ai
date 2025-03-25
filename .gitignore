@@ -1,0 +1,8 @@
+.DS_Store
+.vscode/
+.idea/
+build/
+.kotlin/
+.gradle/
+kotlin-js-store/
+local.properties
